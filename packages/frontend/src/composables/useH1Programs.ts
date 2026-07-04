@@ -1,33 +1,23 @@
 import { useSDK } from "@/plugins/sdk";
-import type { H1Credentials, H1Session, Program, Scope } from "@h1caido/common";
+import type { H1Credentials, Program, Scope } from "@h1caido/common";
 import { watchDebounced } from "@vueuse/core";
 import { computed, reactive, readonly, ref } from "vue";
 
 const STORAGE_KEY = "h1caido:credentials";
 
-interface Stored extends H1Credentials {
-  sessionCookie: string;
-  csrf: string;
-}
-
-function loadStoredCreds(): Stored {
+function loadStoredCreds(): H1Credentials {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const p = JSON.parse(raw);
       if (typeof p?.username === "string" && typeof p?.token === "string") {
-        return {
-          username: p.username,
-          token: p.token,
-          sessionCookie: typeof p.sessionCookie === "string" ? p.sessionCookie : "",
-          csrf: typeof p.csrf === "string" ? p.csrf : "",
-        };
+        return { username: p.username, token: p.token };
       }
     }
   } catch {
     /* ignore malformed storage */
   }
-  return { username: "", token: "", sessionCookie: "", csrf: "" };
+  return { username: "", token: "" };
 }
 
 let _store: ReturnType<typeof createStore> | null = null;
@@ -38,19 +28,16 @@ function createStore() {
   const stored = loadStoredCreds();
   const username = ref(stored.username);
   const token = ref(stored.token);
-  const sessionCookie = ref(stored.sessionCookie);
-  const csrf = ref(stored.csrf);
 
   const programs = reactive(new Map<string, Program>());
   const scopes = reactive(new Map<string, Scope[]>());
   const loadingScopes = reactive(new Set<string>());
   const enriched = reactive(new Set<string>());
   const state = ref<"loading" | "loaded">("loaded");
-  // Set when the GraphQL session is rejected, to stop hammering with failures.
+  // Set after repeated enrichment failures, to stop hammering the endpoint.
   const enrichmentBroken = ref(false);
 
   const hasCreds = computed(() => username.value.trim().length > 0 && token.value.trim().length > 0);
-  const hasSession = computed(() => sessionCookie.value.trim().length > 0);
 
   sdk.backend.onEvent("program", (program) => {
     programs.set(program.handle, program);
@@ -98,18 +85,9 @@ function createStore() {
     return { username: username.value.trim(), token: token.value.trim() };
   }
 
-  function session(): H1Session {
-    return { cookie: sessionCookie.value.trim(), csrf: csrf.value.trim() || undefined };
-  }
-
   function persist() {
     try {
-      const data: Stored = {
-        ...creds(),
-        sessionCookie: sessionCookie.value.trim(),
-        csrf: csrf.value.trim(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(creds()));
     } catch {
       /* ignore */
     }
@@ -131,18 +109,15 @@ function createStore() {
   }
 
   function enrich(handle: string) {
-    // Only attempt GraphQL enrichment when a session is configured and working.
-    if (enriched.has(handle) || !hasSession.value || enrichmentBroken.value) return;
+    // Enrichment hits HackerOne's public GraphQL — no auth required.
+    if (enriched.has(handle) || enrichmentBroken.value) return;
     enriched.add(handle); // optimistic: avoid duplicate in-flight calls
-    persist();
-    sdk.backend.loadEnrichment(handle, session());
+    sdk.backend.loadEnrichment(handle);
   }
 
   function logout() {
     username.value = "";
     token.value = "";
-    sessionCookie.value = "";
-    csrf.value = "";
     programs.clear();
     scopes.clear();
     enriched.clear();
@@ -156,20 +131,11 @@ function createStore() {
 
   // Auto-refresh when credentials change (debounced), and once on startup if set.
   watchDebounced([username, token], refresh, { debounce: 600, immediate: true });
-  // Re-enable enrichment attempts when the session changes.
-  watchDebounced([sessionCookie, csrf], () => {
-    enrichmentBroken.value = false;
-    enriched.clear();
-    persist();
-  }, { debounce: 600 });
 
   return {
     username,
     token,
-    sessionCookie,
-    csrf,
     hasCreds,
-    hasSession,
     loading: readonly(computed(() => state.value === "loading")),
     programs: computed(() => Array.from(programs.values())),
     getScopes: (handle: string) => scopes.get(handle),

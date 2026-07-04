@@ -9,7 +9,6 @@ const store = useH1Programs();
 const search = ref("");
 const onlyBounties = ref(false);
 const selected = ref<string | null>(null);
-const showSession = ref(false);
 
 // Identification header many H1 programs require. Name configurable; value
 // defaults to the researcher's H1 username (the API "username" credential).
@@ -74,33 +73,6 @@ async function enrichVisible() {
       </a>
     </section>
 
-    <!-- Optional GraphQL session for reports/rewards enrichment -->
-    <section v-if="store.hasCreds.value" class="text-xs">
-      <button class="flex items-center gap-1.5 opacity-70 hover:opacity-100" @click="showSession = !showSession">
-        <i class="fas" :class="showSession ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-        Rewards &amp; Reports enrichment (optional)
-        <span v-if="store.hasSession.value" class="text-green-400">· session set</span>
-      </button>
-      <div v-if="showSession" class="mt-2 flex flex-col gap-2 p-3 rounded border border-amber-800/50 bg-amber-950/20">
-        <p class="opacity-80">
-          HackerOne's reward/report data lives behind its internal GraphQL API, which the REST token cannot use.
-          To fetch it, paste your browser <strong>session cookie</strong>.
-          <span class="text-amber-300">⚠️ A session cookie grants full access to your H1 account — it is stored
-          locally only, but treat it like a password.</span>
-        </p>
-        <label class="flex flex-col gap-1">
-          <span class="opacity-70">__Host-session cookie value (DevTools → Application → Cookies → hackerone.com)</span>
-          <input v-model="store.sessionCookie.value" type="password" placeholder="paste __Host-session value"
-            class="px-2 py-1 rounded bg-surface-800 border border-surface-600 font-mono" />
-        </label>
-        <label class="flex flex-col gap-1">
-          <span class="opacity-70">X-Auth-Token (optional — only if enrichment still fails)</span>
-          <input v-model="store.csrf.value" type="password" placeholder="optional CSRF token"
-            class="px-2 py-1 rounded bg-surface-800 border border-surface-600 font-mono" />
-        </label>
-      </div>
-    </section>
-
     <p v-if="!store.hasCreds.value" class="opacity-70">
       Enter your HackerOne API credentials above. They are stored locally in this browser only and sent
       directly to HackerOne's API.
@@ -132,9 +104,9 @@ async function enrichVisible() {
             class="px-2 py-1 rounded bg-surface-800 border border-surface-600 w-[170px] font-mono text-xs" />
           <span class="opacity-50 text-xs">: {{ headerValue || "&lt;username&gt;" }}</span>
         </label>
-        <button v-if="store.hasSession.value"
+        <button
           class="px-2.5 py-1 rounded bg-surface-700 hover:bg-surface-600 text-xs whitespace-nowrap"
-          title="Fetch Reports & Rewards for the visible programs via HackerOne's GraphQL API"
+          title="Fetch Reports & Rewards for the visible programs via HackerOne's public GraphQL"
           @click="enrichVisible()">
           <i class="fas fa-coins mr-1"></i> Load rewards
         </button>
