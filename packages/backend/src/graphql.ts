@@ -124,16 +124,18 @@ export const loadEnrichment = async (sdk: H1.BackendSDK, handle: string): Promis
     }
 
     const team = parsed.data?.resource;
-    const hide = team?.hide_bounty_amounts === true;
-    const rows = hide ? [] : (team?.bounty_table?.bounty_table_rows?.edges ?? []).map((e) => e.node);
+    // `hide_bounty_amounts` does not actually gate public visibility (e.g. Adobe
+    // sets it yet publishes full amounts), so we rely on the values themselves:
+    // when a program truly hides them, min/max come back null and rows empty.
+    const rows = (team?.bounty_table?.bounty_table_rows?.edges ?? []).map((e) => e.node);
 
     const enrichment: Enrichment = {
       handle,
       resolved_reports: team?.resolved_report_count ?? null,
       participants: team?.participants_count ?? null,
       response_efficiency: team?.response_efficiency_percentage ?? null,
-      reward_low: hide ? null : team?.minimum_bounty_table_value ?? null,
-      reward_high: hide ? null : team?.maximum_bounty_table_value ?? null,
+      reward_low: team?.minimum_bounty_table_value ?? null,
+      reward_high: team?.maximum_bounty_table_value ?? null,
       currency: team?.currency ?? null,
       scopes_total: team?.assets_in_scope?.total_count ?? null,
       reward_table: rows.map((n) => ({

@@ -31,7 +31,9 @@ const rewardRange = computed(() => {
   return null;
 });
 
-const hasNamedRows = computed(() => (props.program.reward_table ?? []).some((r) => r.name));
+// Show a row-label column when the table has more than one tier.
+const showRowLabels = computed(() => (props.program.reward_table ?? []).length > 1);
+const rowLabel = (name: string | null, i: number) => name || `Tier ${i + 1}`;
 
 // Format a severity cell: a range when min/max differ, a single amount, or n/a.
 function range(min: number | null, max: number | null): string {
@@ -110,7 +112,7 @@ function copy(text: string) {
         <table class="w-full text-sm">
           <thead class="opacity-60 text-left">
             <tr>
-              <th v-if="hasNamedRows" class="p-2">Asset tier</th>
+              <th v-if="showRowLabels" class="p-2">Tier</th>
               <th class="p-2"><span class="text-emerald-400">Low</span></th>
               <th class="p-2"><span class="text-amber-400">Medium</span></th>
               <th class="p-2"><span class="text-orange-400">High</span></th>
@@ -119,7 +121,7 @@ function copy(text: string) {
           </thead>
           <tbody>
             <tr v-for="(row, i) in program.reward_table" :key="i" class="border-t border-surface-700">
-              <td v-if="hasNamedRows" class="p-2 font-medium">{{ row.name || "Default" }}</td>
+              <td v-if="showRowLabels" class="p-2 font-medium">{{ rowLabel(row.name, i) }}</td>
               <td class="p-2">{{ range(row.low_min, row.low_max) }}</td>
               <td class="p-2">{{ range(row.medium_min, row.medium_max) }}</td>
               <td class="p-2">{{ range(row.high_min, row.high_max) }}</td>
