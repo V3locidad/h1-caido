@@ -11,6 +11,11 @@ const search = ref("");
 const onlyBounties = ref(false);
 const expanded = ref<string | null>(null);
 
+// Identification header many H1 programs require. Name is configurable; value
+// defaults to the researcher's H1 username (the API "username" credential).
+const headerName = ref("X-HackerOne-Research");
+const headerValue = computed(() => store.username.value.trim());
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
   return store.programs.value
@@ -69,11 +74,17 @@ function toggle(handle: string) {
     </p>
 
     <!-- Filters -->
-    <section v-if="store.hasCreds.value" class="flex items-center gap-3">
+    <section v-if="store.hasCreds.value" class="flex flex-wrap items-center gap-3">
       <input v-model="search" type="text" placeholder="Filter by name or handle…"
-        class="px-2 py-1 rounded bg-surface-800 border border-surface-600 flex-1" />
+        class="px-2 py-1 rounded bg-surface-800 border border-surface-600 flex-1 min-w-[180px]" />
       <label class="flex items-center gap-1 whitespace-nowrap">
         <input v-model="onlyBounties" type="checkbox" /> bounties only
+      </label>
+      <label class="flex items-center gap-1 whitespace-nowrap" title="Header added by the 'Add ID header' button. Check each program's policy for the exact name it requires.">
+        <span class="opacity-70 text-xs">ID header</span>
+        <input v-model="headerName" type="text"
+          class="px-2 py-1 rounded bg-surface-800 border border-surface-600 w-[170px] font-mono text-xs" />
+        <span class="opacity-50 text-xs">: {{ headerValue || "<username>" }}</span>
       </label>
       <span class="opacity-60 whitespace-nowrap">
         {{ filtered.length }} / {{ store.programs.value.length }}
@@ -95,6 +106,11 @@ function toggle(handle: string) {
           <span class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-surface-700 opacity-80">
             {{ p.submission_state }}
           </span>
+          <span v-if="p.bounty_earned_for_user"
+            class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-700/30 text-amber-200"
+            title="Bounty you have already earned on this program">
+            earned {{ p.bounty_earned_for_user }} {{ p.currency ?? "" }}
+          </span>
         </button>
 
         <div v-if="expanded === p.handle" class="px-3 pb-3 flex flex-col gap-2">
@@ -104,8 +120,10 @@ function toggle(handle: string) {
               <i class="fas fa-crosshairs mr-1"></i> Import scope
             </button>
             <button class="px-2 py-1 rounded bg-surface-700 hover:bg-surface-600 text-xs"
-              @click="caido.setUserAgent(p.handle)">
-              <i class="fas fa-id-badge mr-1"></i> Set User-Agent
+              :disabled="!headerValue"
+              :title="`Adds Match&Replace rule: ${headerName}: ${headerValue || '<username>'}`"
+              @click="caido.addResearchHeader(p.handle, headerName, headerValue)">
+              <i class="fas fa-id-badge mr-1"></i> Add ID header
             </button>
             <button class="px-2 py-1 rounded bg-surface-700 hover:bg-surface-600 text-xs"
               @click="caido.deleteScope(p.handle)">
@@ -128,9 +146,12 @@ function toggle(handle: string) {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in store.getScopes(p.handle)" :key="s.id" class="border-t border-surface-700">
-                <td class="py-1 pr-2 font-mono" :class="{ 'opacity-50': !isWebAsset(s) }">
-                  {{ s.asset_identifier }}
+              <tr v-for="s in store.getScopes(p.handle)" :key="s.id" class="border-t border-surface-700 align-top">
+                <td class="py-1 pr-2">
+                  <div class="font-mono" :class="{ 'opacity-50': !isWebAsset(s) }">{{ s.asset_identifier }}</div>
+                  <div v-if="s.instruction" class="opacity-50 text-[11px] whitespace-pre-wrap max-w-[420px]">
+                    {{ s.instruction }}
+                  </div>
                 </td>
                 <td class="py-1 pr-2">{{ s.asset_type }}</td>
                 <td class="py-1 pr-2">{{ s.eligible_for_bounty ? "✓" : "—" }}</td>
@@ -139,6 +160,11 @@ function toggle(handle: string) {
             </tbody>
           </table>
           <div v-else class="opacity-60">No structured scopes returned.</div>
+
+          <p class="opacity-40 text-[11px] mt-1">
+            Note: HackerOne's API exposes <code>max_severity</code> per scope but not the low/medium/high/critical
+            bounty table — see the full amounts on the program page. Verify the exact identification header there too.
+          </p>
         </div>
       </div>
 

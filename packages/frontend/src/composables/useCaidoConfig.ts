@@ -5,7 +5,7 @@ import { scopesToAllowlist } from "@/utils/scope";
 // Prefix used for scope + match-and-replace entries created by this plugin,
 // so users can recognise (and clean up) what H1Caido added.
 const SCOPE_PREFIX = "h1:";
-const UA_COLLECTION = "h1caido-user_agent";
+const HEADER_COLLECTION = "h1caido-research-header";
 
 export function useCaidoConfig() {
   const sdk = useSDK();
@@ -67,47 +67,57 @@ export function useCaidoConfig() {
     }
   }
 
-  // Optional: tag outgoing traffic with an identifying User-Agent suffix, which
-  // many HackerOne programs ask researchers to do. HackerOne's API does not
-  // expose a per-program UA, so we build one from the handle.
-  async function setUserAgent(handle: string) {
-    const suffix = `bugbounty-h1-${handle}`;
-    let collection = sdk.matchReplace.getCollections().find((c) => c.name === UA_COLLECTION);
-    if (!collection) {
-      collection = await sdk.matchReplace.createCollection({ name: UA_COLLECTION });
-    }
-
-    const existing = sdk.matchReplace
-      .getRules()
-      .find((r) => r.collectionId === collection!.id && r.name === handle);
-    if (existing) {
-      sdk.window.showToast(`User-Agent rule already exists for ${handle}`, {
-        variant: "info",
+  // Add an identifying request header that HackerOne programs ask researchers
+  // to include (e.g. "X-HackerOne-Research: <username>"). The header name and
+  // value are supplied by the UI because the exact requirement varies per
+  // program and is only stated in free-text policy/scope instructions — it is
+  // not a machine-readable field in the API.
+  async function addResearchHeader(handle: string, headerName: string, headerValue: string) {
+    const name = headerName.trim().replace(/:\s*$/, "");
+    const value = headerValue.trim();
+    if (!name || !value) {
+      sdk.window.showToast("Set both a header name and value first", {
+        variant: "warning",
         duration: 3000,
       });
       return;
     }
 
+    let collection = sdk.matchReplace.getCollections().find((c) => c.name === HEADER_COLLECTION);
+    if (!collection) {
+      collection = await sdk.matchReplace.createCollection({ name: HEADER_COLLECTION });
+    }
+
+    const ruleName = `${handle} · ${name}`;
+    const existing = sdk.matchReplace
+      .getRules()
+      .find((r) => r.collectionId === collection!.id && r.name === ruleName);
+    if (existing) {
+      sdk.window.showToast(`Header rule already exists: ${ruleName}`, { variant: "info", duration: 3000 });
+      return;
+    }
+
     try {
       await sdk.matchReplace.createRule({
-        name: handle,
+        name: ruleName,
         collectionId: collection.id,
         sources: [],
         query: "",
         section: {
           kind: "SectionRequestHeader",
           operation: {
-            kind: "OperationHeaderRaw",
-            matcher: { kind: "MatcherRawRegex", regex: "^User-Agent:(.*?)$" },
-            replacer: { kind: "ReplacerTerm", term: `User-Agent: $1 ${suffix}` },
+            // Add the header (rather than rewrite an existing one).
+            kind: "OperationHeaderAdd",
+            matcher: { kind: "MatcherName", name },
+            replacer: { kind: "ReplacerTerm", term: value },
           },
         },
       });
-      sdk.window.showToast(`Added User-Agent rule "${suffix}"`, { variant: "success", duration: 3000 });
+      sdk.window.showToast(`Added header rule "${name}: ${value}"`, { variant: "success", duration: 3000 });
     } catch (error) {
-      sdk.window.showToast(`Failed to add User-Agent rule: ${error}`, { variant: "error", duration: 5000 });
+      sdk.window.showToast(`Failed to add header rule: ${error}`, { variant: "error", duration: 5000 });
     }
   }
 
-  return { importScope, deleteScope, setUserAgent };
+  return { importScope, deleteScope, addResearchHeader };
 }

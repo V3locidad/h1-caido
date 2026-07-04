@@ -31,6 +31,8 @@ export const loadPrograms = async (sdk: H1.BackendSDK, creds: H1Credentials): Pr
           submission_state: a.submission_state,
           offers_bounties: a.offers_bounties,
           offers_swag: a.offers_swag,
+          bounty_earned_for_user: a.bounty_earned_for_user,
+          valid_reports_for_user: a.number_of_valid_reports_for_user,
         };
         if (program.handle) {
           sdk.api.send("program", program);

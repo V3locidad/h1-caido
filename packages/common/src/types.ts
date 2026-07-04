@@ -32,6 +32,9 @@ export const programAttributesParser = z.object({
   // Present on the single-program endpoint (policy / rules, markdown).
   policy: z.string().catch("").optional(),
   started_accepting_at: z.string().nullable().catch(null).optional(),
+  // Per-user stats (the API does NOT expose a per-severity reward table).
+  bounty_earned_for_user: z.number().nullable().catch(null).optional(),
+  number_of_valid_reports_for_user: z.number().nullable().catch(null).optional(),
 });
 
 export const programResourceParser = z.object({
@@ -100,6 +103,8 @@ export interface Program {
   offers_bounties: boolean;
   offers_swag?: boolean;
   policy?: string;
+  bounty_earned_for_user?: number | null;
+  valid_reports_for_user?: number | null;
 }
 
 export interface Scope {
