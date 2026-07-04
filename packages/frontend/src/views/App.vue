@@ -8,6 +8,7 @@ const store = useH1Programs();
 
 const search = ref("");
 const onlyBounties = ref(false);
+const showInactive = ref(false);
 const selected = ref<string | null>(null);
 
 // Identification header many H1 programs require. Name configurable; value
@@ -18,6 +19,8 @@ const headerValue = computed(() => store.username.value.trim());
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
   return store.programs.value
+    // Hide paused/disabled programs (e.g. migrated ones) unless asked.
+    .filter((p) => showInactive.value || p.submission_state === "open")
     .filter((p) => !onlyBounties.value || p.offers_bounties)
     .filter((p) => !q || p.name.toLowerCase().includes(q) || p.handle.toLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -110,6 +113,10 @@ watch(
           class="px-2 py-1 rounded bg-surface-800 border border-surface-600 flex-1 min-w-[180px]" />
         <label class="flex items-center gap-1 whitespace-nowrap">
           <input v-model="onlyBounties" type="checkbox" /> bounties only
+        </label>
+        <label class="flex items-center gap-1 whitespace-nowrap"
+          title="Show programs that are paused or disabled (e.g. migrated)">
+          <input v-model="showInactive" type="checkbox" /> show paused
         </label>
         <label class="flex items-center gap-1 whitespace-nowrap"
           title="Header added by 'Add ID header'. Check each program's policy for the exact name it requires.">

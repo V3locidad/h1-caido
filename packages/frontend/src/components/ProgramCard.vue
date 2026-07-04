@@ -39,6 +39,10 @@ const rewardRange = computed(() => {
         </Chip>
         <Chip :icon="isPublic ? 'fa-globe' : 'fa-lock'">{{ isPublic ? "Public" : "Private" }}</Chip>
         <Chip v-if="scopeCount !== undefined" icon="fa-database">{{ scopeCount }} scopes</Chip>
+        <span v-if="program.submission_state !== 'open'"
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-amber-900/40 text-amber-300">
+          <i class="fas fa-pause"></i> {{ program.submission_state }}
+        </span>
       </div>
 
       <hr class="border-surface-700" />
