@@ -35,6 +35,9 @@ export const programAttributesParser = z.object({
   // Per-user stats (the API does NOT expose a per-severity reward table).
   bounty_earned_for_user: z.number().nullable().catch(null).optional(),
   number_of_valid_reports_for_user: z.number().nullable().catch(null).optional(),
+  number_of_reports_for_user: z.number().nullable().catch(null).optional(),
+  // Program logo. May be a plain URL string; kept resilient if the shape differs.
+  profile_picture: z.string().catch("").optional(),
 });
 
 export const programResourceParser = z.object({
@@ -102,9 +105,29 @@ export interface Program {
   submission_state: string;
   offers_bounties: boolean;
   offers_swag?: boolean;
+  state?: string;
   policy?: string;
+  profile_picture?: string;
   bounty_earned_for_user?: number | null;
   valid_reports_for_user?: number | null;
+  reports_for_user?: number | null;
+
+  // Optional fields enriched from the internal GraphQL API (hackerone.com/graphql).
+  // Undefined until enrichment runs; the UI shows "—" when absent.
+  resolved_reports?: number | null;
+  response_efficiency?: number | null; // percentage
+  reward_low?: number | null;
+  reward_high?: number | null;
+  reward_table?: AssetRewardRow[];
+}
+
+// A row of the "Rewards - Asset value" table (per CVSS bucket), when available.
+export interface AssetRewardRow {
+  asset_value: string; // e.g. "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  none: number | null; // CVSS 0 - 3.9
+  low: number | null; // CVSS 4.0 - 6.9
+  medium: number | null; // CVSS 7.0 - 8.9
+  high: number | null; // CVSS 9.0 - 10.0
 }
 
 export interface Scope {
