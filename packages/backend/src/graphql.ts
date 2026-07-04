@@ -13,6 +13,7 @@ const QUERY = `query H1CaidoEnrich($handle: URI!) {
       handle
       currency
       resolved_report_count
+      participants_count
       response_efficiency_percentage
       minimum_bounty_table_value
       maximum_bounty_table_value
@@ -59,6 +60,7 @@ const responseParser = z.object({
           __typename: z.string().catch(""),
           currency: z.string().nullable().catch(null),
           resolved_report_count: z.number().nullable().catch(null),
+          participants_count: z.number().nullable().catch(null),
           response_efficiency_percentage: z.number().nullable().catch(null),
           minimum_bounty_table_value: z.number().nullable().catch(null),
           maximum_bounty_table_value: z.number().nullable().catch(null),
@@ -128,6 +130,7 @@ export const loadEnrichment = async (sdk: H1.BackendSDK, handle: string): Promis
     const enrichment: Enrichment = {
       handle,
       resolved_reports: team?.resolved_report_count ?? null,
+      participants: team?.participants_count ?? null,
       response_efficiency: team?.response_efficiency_percentage ?? null,
       reward_low: hide ? null : team?.minimum_bounty_table_value ?? null,
       reward_high: hide ? null : team?.maximum_bounty_table_value ?? null,

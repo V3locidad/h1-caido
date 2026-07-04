@@ -54,6 +54,7 @@ function createStore() {
       programs.set(e.handle, {
         ...p,
         resolved_reports: e.resolved_reports,
+        participants: e.participants,
         response_efficiency: e.response_efficiency,
         reward_low: e.reward_low,
         reward_high: e.reward_high,

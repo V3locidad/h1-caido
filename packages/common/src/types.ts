@@ -116,6 +116,7 @@ export interface Program {
   // Optional fields enriched from the internal GraphQL API (hackerone.com/graphql).
   // Undefined until enrichment runs; the UI shows "—" when absent.
   resolved_reports?: number | null;
+  participants?: number | null; // number of hackers who participated
   response_efficiency?: number | null; // percentage
   reward_low?: number | null; // minimum_bounty_table_value
   reward_high?: number | null; // maximum_bounty_table_value
@@ -158,6 +159,7 @@ export interface ScopeBundle {
 export interface Enrichment {
   handle: string;
   resolved_reports: number | null;
+  participants: number | null;
   response_efficiency: number | null;
   reward_low: number | null;
   reward_high: number | null;

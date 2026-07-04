@@ -80,8 +80,12 @@ function copy(text: string) {
     <!-- Stats -->
     <dl class="text-sm flex flex-col gap-1.5">
       <div class="flex justify-between">
-        <dt class="font-semibold">Reports</dt>
+        <dt class="font-semibold">Reports resolved</dt>
         <dd>{{ program.resolved_reports ?? "—" }}</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="font-semibold">Hackers</dt>
+        <dd>{{ program.participants ?? "—" }}</dd>
       </div>
       <div class="flex justify-between">
         <dt class="font-semibold">Response efficiency</dt>
