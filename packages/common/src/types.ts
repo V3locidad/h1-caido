@@ -117,18 +117,25 @@ export interface Program {
   // Undefined until enrichment runs; the UI shows "—" when absent.
   resolved_reports?: number | null;
   response_efficiency?: number | null; // percentage
-  reward_low?: number | null;
-  reward_high?: number | null;
-  reward_table?: AssetRewardRow[];
+  reward_low?: number | null; // minimum_bounty_table_value
+  reward_high?: number | null; // maximum_bounty_table_value
+  reward_table?: RewardRow[];
 }
 
-// A row of the "Rewards - Asset value" table (per CVSS bucket), when available.
-export interface AssetRewardRow {
-  asset_value: string; // e.g. "LOW", "MEDIUM", "HIGH", "CRITICAL"
-  none: number | null; // CVSS 0 - 3.9
-  low: number | null; // CVSS 4.0 - 6.9
-  medium: number | null; // CVSS 7.0 - 8.9
-  high: number | null; // CVSS 9.0 - 10.0
+// A row of HackerOne's bounty table. Each severity carries a min/max (a range
+// when use_range is true, otherwise min === max). `name` labels the asset tier
+// (null for the program-wide default row).
+export interface RewardRow {
+  name: string | null;
+  use_range: boolean;
+  low_min: number | null;
+  low_max: number | null;
+  medium_min: number | null;
+  medium_max: number | null;
+  high_min: number | null;
+  high_max: number | null;
+  critical_min: number | null;
+  critical_max: number | null;
 }
 
 export interface Scope {
@@ -151,10 +158,12 @@ export interface ScopeBundle {
 export interface Enrichment {
   handle: string;
   resolved_reports: number | null;
+  response_efficiency: number | null;
   reward_low: number | null;
   reward_high: number | null;
   currency: string | null;
   scopes_total: number | null;
+  reward_table: RewardRow[];
 }
 
 // ---------------------------------------------------------------------------

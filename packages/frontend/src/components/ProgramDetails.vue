@@ -31,6 +31,17 @@ const rewardRange = computed(() => {
   return null;
 });
 
+const hasNamedRows = computed(() => (props.program.reward_table ?? []).some((r) => r.name));
+
+// Format a severity cell: a range when min/max differ, a single amount, or n/a.
+function range(min: number | null, max: number | null): string {
+  if (min == null && max == null) return "n/a";
+  if (min != null && max != null && min !== max) {
+    return `${money(min, props.program.currency)} - ${money(max, props.program.currency)}`;
+  }
+  return money(max ?? min, props.program.currency);
+}
+
 function copy(text: string) {
   navigator.clipboard?.writeText(text);
   sdk.window.showToast(`Copied: ${text}`, { variant: "info", duration: 1500 });
@@ -88,31 +99,27 @@ function copy(text: string) {
       </div>
     </dl>
 
-    <!-- Rewards - Asset value table (only when enriched from GraphQL) -->
+    <!-- Rewards summary table (only when enriched from GraphQL) -->
     <div v-if="program.reward_table?.length">
-      <h3 class="font-bold tracking-wide mb-2">REWARDS - ASSET VALUE</h3>
+      <h3 class="font-bold tracking-wide mb-2">REWARDS SUMMARY</h3>
       <div class="overflow-x-auto rounded-lg border border-surface-700">
         <table class="w-full text-sm">
           <thead class="opacity-60 text-left">
             <tr>
-              <th class="p-2">Asset value</th>
-              <th class="p-2">CVSS (0 - 3.9)</th>
-              <th class="p-2">CVSS (4.0 - 6.9)</th>
-              <th class="p-2">CVSS (7.0 - 8.9)</th>
-              <th class="p-2">CVSS (9.0 - 10.0)</th>
+              <th v-if="hasNamedRows" class="p-2">Asset tier</th>
+              <th class="p-2"><span class="text-emerald-400">Low</span></th>
+              <th class="p-2"><span class="text-amber-400">Medium</span></th>
+              <th class="p-2"><span class="text-orange-400">High</span></th>
+              <th class="p-2"><span class="text-rose-400">Critical</span></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in program.reward_table" :key="row.asset_value" class="border-t border-surface-700">
-              <td class="p-2">
-                <span class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-amber-500/80 text-black font-bold">
-                  {{ row.asset_value }}
-                </span>
-              </td>
-              <td class="p-2">{{ money(row.none, program.currency) }}</td>
-              <td class="p-2">{{ money(row.low, program.currency) }}</td>
-              <td class="p-2">{{ money(row.medium, program.currency) }}</td>
-              <td class="p-2">{{ money(row.high, program.currency) }}</td>
+            <tr v-for="(row, i) in program.reward_table" :key="i" class="border-t border-surface-700">
+              <td v-if="hasNamedRows" class="p-2 font-medium">{{ row.name || "Default" }}</td>
+              <td class="p-2">{{ range(row.low_min, row.low_max) }}</td>
+              <td class="p-2">{{ range(row.medium_min, row.medium_max) }}</td>
+              <td class="p-2">{{ range(row.high_min, row.high_max) }}</td>
+              <td class="p-2">{{ range(row.critical_min, row.critical_max) }}</td>
             </tr>
           </tbody>
         </table>
@@ -194,8 +201,8 @@ function copy(text: string) {
     </div>
 
     <p class="opacity-40 text-[11px]">
-      Reports, response efficiency and the reward table come from HackerOne's internal GraphQL API and appear
-      only once enrichment is enabled. The REST API alone does not expose them.
+      Reports, response efficiency and the reward table come from HackerOne's public GraphQL API. Private
+      programs do not expose them, so those fields stay "—".
     </p>
   </div>
 </template>

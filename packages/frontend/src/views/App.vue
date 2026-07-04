@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useH1Programs } from "@/composables/useH1Programs";
 import ProgramCard from "@/components/ProgramCard.vue";
 import ProgramDetails from "@/components/ProgramDetails.vue";
@@ -31,15 +31,29 @@ function open(handle: string) {
   store.enrich(handle);
 }
 
-// Enrich all visible programs (Reports/Rewards) via GraphQL, throttled to avoid
+// Enrich a set of programs (Reports/Rewards) via GraphQL, throttled to avoid
 // hammering the endpoint.
-async function enrichVisible() {
-  const handles = filtered.value.map((p) => p.handle);
+async function enrichHandles(handles: string[]) {
   for (const handle of handles) {
     store.enrich(handle);
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 120));
   }
 }
+
+const enrichVisible = () => enrichHandles(filtered.value.map((p) => p.handle));
+
+// Auto-enrich every program in the background once the list finishes loading.
+let autoEnrichedFor = 0;
+watch(
+  () => [store.loading.value, store.programs.value.length] as const,
+  ([loading, count]) => {
+    if (!loading && count > 0 && count !== autoEnrichedFor) {
+      autoEnrichedFor = count;
+      enrichHandles(store.programs.value.map((p) => p.handle));
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>

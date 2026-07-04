@@ -54,8 +54,10 @@ function createStore() {
       programs.set(e.handle, {
         ...p,
         resolved_reports: e.resolved_reports,
+        response_efficiency: e.response_efficiency,
         reward_low: e.reward_low,
         reward_high: e.reward_high,
+        reward_table: e.reward_table,
         currency: e.currency ?? p.currency,
       });
     }
