@@ -13,7 +13,7 @@ export default defineConfig({
   id,
   name: "H1Caido",
   description: "Interact with HackerOne's API to fetch your bug bounty programs and import their scope into Caido.",
-  version: "1.0.0",
+  version: "1.0.1",
   author: {
     name: "V3locidad",
     email: "v3locidad@v3locidad.com",

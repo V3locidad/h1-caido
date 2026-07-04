@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useVirtualizer } from "@tanstack/vue-virtual";
 import { useH1Programs } from "@/composables/useH1Programs";
+import type { Program } from "@h1caido/common";
 import ProgramCard from "@/components/ProgramCard.vue";
 import ProgramDetails from "@/components/ProgramDetails.vue";
 
@@ -57,10 +59,70 @@ watch(
   },
   { immediate: true }
 );
+
+// ---------------------------------------------------------------------------
+// Virtualized grid (TanStack Virtual). Keeps the DOM light on accounts with
+// hundreds of programs by rendering only the visible rows.
+// ---------------------------------------------------------------------------
+const CARD_MIN = 240; // px, matches the card min width
+const GAP = 16; // px, matches gap-4
+
+const scrollParent = ref<HTMLElement | null>(null);
+const containerWidth = ref(0);
+let ro: ResizeObserver | undefined;
+
+onMounted(() => {
+  ro = new ResizeObserver((entries) => {
+    const w = entries[0]?.contentRect.width;
+    if (w) containerWidth.value = w;
+  });
+  if (scrollParent.value) {
+    containerWidth.value = scrollParent.value.clientWidth;
+    ro.observe(scrollParent.value);
+  }
+});
+onBeforeUnmount(() => ro?.disconnect());
+
+// Re-observe when the scroll parent mounts (e.g. switching back from details).
+watch(scrollParent, (el) => {
+  if (el && ro) {
+    containerWidth.value = el.clientWidth;
+    ro.observe(el);
+  }
+});
+
+const columns = computed(() =>
+  Math.max(1, Math.floor((containerWidth.value + GAP) / (CARD_MIN + GAP)))
+);
+
+// Chunk the filtered programs into rows of `columns` cards.
+const rows = computed<Program[][]>(() => {
+  const cols = columns.value;
+  const out: Program[][] = [];
+  const items = filtered.value;
+  for (let i = 0; i < items.length; i += cols) out.push(items.slice(i, i + cols));
+  return out;
+});
+
+const rowVirtualizer = useVirtualizer(
+  computed(() => ({
+    count: rows.value.length,
+    getScrollElement: () => scrollParent.value,
+    estimateSize: () => 470, // approximate row height incl. gap; refined by measurement
+    overscan: 4,
+    gap: GAP,
+  }))
+);
+
+const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems());
+const totalSize = computed(() => rowVirtualizer.value.getTotalSize());
+const measure = (el: unknown) => {
+  if (el instanceof Element) rowVirtualizer.value.measureElement(el);
+};
 </script>
 
 <template>
-  <div class="h-full w-full flex flex-col gap-3 p-4 text-sm overflow-auto">
+  <div class="h-full w-full flex flex-col gap-3 p-4 text-sm min-h-0">
     <header class="flex items-center gap-2">
       <i class="fas fa-bullseye text-lg"></i>
       <h1 class="text-lg font-semibold">H1Caido</h1>
@@ -96,15 +158,16 @@ watch(
     </p>
 
     <!-- Details view -->
-    <ProgramDetails
-      v-else-if="selected && selectedProgram"
-      :program="selectedProgram"
-      :scopes="store.getScopes(selected)"
-      :loading-scopes="store.isLoadingScopes(selected)"
-      :header-name="headerName"
-      :header-value="headerValue"
-      @back="selected = null"
-    />
+    <div v-else-if="selected && selectedProgram" class="flex-1 min-h-0 overflow-auto">
+      <ProgramDetails
+        :program="selectedProgram"
+        :scopes="store.getScopes(selected)"
+        :loading-scopes="store.isLoadingScopes(selected)"
+        :header-name="headerName"
+        :header-value="headerValue"
+        @back="selected = null"
+      />
+    </div>
 
     <!-- Grid view -->
     <template v-else-if="store.hasCreds.value">
@@ -137,15 +200,34 @@ watch(
         </span>
       </section>
 
-      <section class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-        <ProgramCard
-          v-for="p in filtered"
-          :key="p.handle"
-          :program="p"
-          :scope-count="store.getScopes(p.handle)?.length"
-          @open="open(p.handle)"
-        />
-      </section>
+      <!-- Virtualized scroll container: only visible rows are in the DOM. -->
+      <div ref="scrollParent" class="flex-1 min-h-0 overflow-auto">
+        <div :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }">
+          <div
+            v-for="vr in virtualRows"
+            :key="vr.index"
+            :data-index="vr.index"
+            :ref="measure"
+            class="grid gap-4"
+            :style="{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              transform: `translateY(${vr.start}px)`,
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+            }"
+          >
+            <ProgramCard
+              v-for="p in rows[vr.index]"
+              :key="p.handle"
+              :program="p"
+              :scope-count="store.getScopes(p.handle)?.length"
+              @open="open(p.handle)"
+            />
+          </div>
+        </div>
+      </div>
 
       <div v-if="!store.loading.value && store.programs.value.length === 0" class="opacity-60 text-center py-8">
         No programs found for these credentials.
