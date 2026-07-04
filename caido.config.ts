@@ -15,8 +15,8 @@ export default defineConfig({
   description: "Interact with HackerOne's API to fetch your bug bounty programs and import their scope into Caido.",
   version: "1.0.0",
   author: {
-    name: "julien",
-    email: "noreply@h1caido.dev",
+    name: "V3locidad",
+    email: "v3locidad@v3locidad.com",
     url: "https://github.com/",
   },
   plugins: [
