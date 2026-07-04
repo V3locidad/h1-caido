@@ -32,6 +32,7 @@ function createStore() {
   const programs = reactive(new Map<string, Program>());
   const scopes = reactive(new Map<string, Scope[]>());
   const loadingScopes = reactive(new Set<string>());
+  const enriched = reactive(new Set<string>());
   const state = ref<"loading" | "loaded">("loaded");
 
   const hasCreds = computed(() => username.value.trim().length > 0 && token.value.trim().length > 0);
@@ -43,6 +44,20 @@ function createStore() {
   sdk.backend.onEvent("scopes", ({ handle, scopes: list }) => {
     scopes.set(handle, list);
     loadingScopes.delete(handle);
+  });
+
+  sdk.backend.onEvent("enrichment", (e) => {
+    const p = programs.get(e.handle);
+    if (p) {
+      programs.set(e.handle, {
+        ...p,
+        resolved_reports: e.resolved_reports,
+        reward_low: e.reward_low,
+        reward_high: e.reward_high,
+        currency: e.currency ?? p.currency,
+      });
+    }
+    enriched.add(e.handle);
   });
 
   sdk.backend.onEvent("stateChanged", (newState) => {
@@ -74,6 +89,7 @@ function createStore() {
     persist();
     programs.clear();
     scopes.clear();
+    enriched.clear();
     sdk.backend.loadPrograms(creds());
   }
 
@@ -83,11 +99,18 @@ function createStore() {
     sdk.backend.loadScopes(handle, creds());
   }
 
+  function enrich(handle: string) {
+    if (enriched.has(handle) || !hasCreds.value) return;
+    enriched.add(handle); // optimistic: avoid duplicate in-flight calls
+    sdk.backend.loadEnrichment(handle, creds());
+  }
+
   function logout() {
     username.value = "";
     token.value = "";
     programs.clear();
     scopes.clear();
+    enriched.clear();
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -108,6 +131,7 @@ function createStore() {
     isLoadingScopes: (handle: string) => loadingScopes.has(handle),
     refresh,
     loadScopes,
+    enrich,
     logout,
   };
 }

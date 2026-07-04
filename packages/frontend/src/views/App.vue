@@ -28,6 +28,17 @@ const selectedProgram = computed(() => store.programs.value.find((p) => p.handle
 function open(handle: string) {
   selected.value = handle;
   store.loadScopes(handle);
+  store.enrich(handle);
+}
+
+// Enrich all visible programs (Reports/Rewards) via GraphQL, throttled to avoid
+// hammering the endpoint.
+async function enrichVisible() {
+  const handles = filtered.value.map((p) => p.handle);
+  for (const handle of handles) {
+    store.enrich(handle);
+    await new Promise((r) => setTimeout(r, 150));
+  }
 }
 </script>
 
@@ -93,6 +104,11 @@ function open(handle: string) {
             class="px-2 py-1 rounded bg-surface-800 border border-surface-600 w-[170px] font-mono text-xs" />
           <span class="opacity-50 text-xs">: {{ headerValue || "&lt;username&gt;" }}</span>
         </label>
+        <button class="px-2.5 py-1 rounded bg-surface-700 hover:bg-surface-600 text-xs whitespace-nowrap"
+          title="Fetch Reports & Rewards for the visible programs via HackerOne's GraphQL API"
+          @click="enrichVisible()">
+          <i class="fas fa-coins mr-1"></i> Load rewards
+        </button>
         <span class="opacity-60 whitespace-nowrap">
           {{ filtered.length }} / {{ store.programs.value.length }}
           <span v-if="store.loading.value"> · loading…</span>

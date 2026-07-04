@@ -145,17 +145,30 @@ export interface ScopeBundle {
   scopes: Scope[];
 }
 
+// Data enriched from the internal GraphQL API (hackerone.com/graphql), which the
+// REST Hacker API does not expose.
+export interface Enrichment {
+  handle: string;
+  resolved_reports: number | null;
+  reward_low: number | null;
+  reward_high: number | null;
+  currency: string | null;
+  scopes_total: number | null;
+}
+
 // ---------------------------------------------------------------------------
 // Plugin API + events contract (shared by backend and frontend)
 // ---------------------------------------------------------------------------
 type API = DefineAPI<{
   loadPrograms: (sdk: H1.BackendSDK, creds: H1Credentials) => Promise<void>;
   loadScopes: (sdk: H1.BackendSDK, handle: string, creds: H1Credentials) => Promise<void>;
+  loadEnrichment: (sdk: H1.BackendSDK, handle: string, creds: H1Credentials) => Promise<void>;
 }>;
 
 type BackendEvents = DefineEvents<{
   program: (data: Program) => void;
   scopes: (data: ScopeBundle) => void;
+  enrichment: (data: Enrichment) => void;
   invalidCreds: () => void;
   error: (message: string) => void;
   stateChanged: (state: "loading" | "loaded") => void;
