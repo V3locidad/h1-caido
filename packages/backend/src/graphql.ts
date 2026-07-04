@@ -75,7 +75,15 @@ export const loadEnrichment = async (
         Accept: "application/json",
         "Content-Type": "application/json",
         Cookie: cookieHeader(session.cookie),
+        // HackerOne's GraphQL enforces CSRF + same-origin on POST, so mirror the
+        // browser as closely as possible.
         ...(session.csrf ? { "X-Auth-Token": session.csrf } : {}),
+        Origin: "https://hackerone.com",
+        Referer: `https://hackerone.com/${handle}`,
+        "X-Product-Area": "team_profile",
+        "X-Product-Feature": "overview",
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
       },
       body: new Blob([payload], { type: "application/json" }),
     });
