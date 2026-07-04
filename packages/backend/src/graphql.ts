@@ -1,9 +1,16 @@
 import { fetch, Blob } from "caido:http";
 import { z } from "zod";
-import type { Enrichment, H1, H1Credentials } from "@h1caido/common";
-import { authHeaders, AuthError } from "./utils";
+import type { Enrichment, H1, H1Session } from "@h1caido/common";
+import { AuthError } from "./utils";
 
 const GRAPHQL = "https://hackerone.com/graphql";
+
+// Build the Cookie header from whatever the user pasted: a bare __Host-session
+// value, or a full "name=value; name2=value2" Cookie header.
+function cookieHeader(cookie: string): string {
+  const value = cookie.trim();
+  return value.includes("=") ? value : `__Host-session=${value}`;
+}
 
 // Lean query over the fields the REST API does not expose. Field names come from
 // HackerOne's own `LayoutDispatcher` query (the team profile page).
@@ -54,7 +61,7 @@ const responseParser = z.object({
 export const loadEnrichment = async (
   sdk: H1.BackendSDK,
   handle: string,
-  creds: H1Credentials
+  session: H1Session
 ): Promise<void> => {
   try {
     const payload = JSON.stringify({
@@ -65,14 +72,16 @@ export const loadEnrichment = async (
     const resp = await fetch(GRAPHQL, {
       method: "POST",
       headers: {
-        ...authHeaders(creds),
+        Accept: "application/json",
         "Content-Type": "application/json",
+        Cookie: cookieHeader(session.cookie),
+        ...(session.csrf ? { "X-Auth-Token": session.csrf } : {}),
       },
       body: new Blob([payload], { type: "application/json" }),
     });
 
     if (resp.status === 401 || resp.status === 403) {
-      throw new AuthError("GraphQL rejected the API token");
+      throw new AuthError("GraphQL rejected the session");
     }
     if (!resp.ok) {
       throw new Error(`GraphQL request failed (${resp.status})`);
@@ -96,12 +105,12 @@ export const loadEnrichment = async (
   } catch (error) {
     if (error instanceof AuthError) {
       sdk.api.send(
-        "error",
-        "GraphQL enrichment: the API token was not accepted on hackerone.com/graphql (rewards/reports unavailable)."
+        "enrichmentUnavailable",
+        "Your HackerOne session was rejected on hackerone.com/graphql. Re-copy your __Host-session cookie (and X-Auth-Token if needed)."
       );
       return;
     }
     const message = error instanceof Error ? error.message : String(error);
-    sdk.api.send("error", `GraphQL enrichment failed: ${message}`);
+    sdk.api.send("enrichmentUnavailable", `GraphQL enrichment failed: ${message}`);
   }
 };

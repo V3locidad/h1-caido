@@ -12,6 +12,14 @@ export interface H1Credentials {
   token: string;
 }
 
+// Optional browser session used only for GraphQL enrichment (reports/rewards),
+// which the REST API token cannot access. `cookie` is the __Host-session value
+// (or a full Cookie header); `csrf` is the X-Auth-Token if the endpoint needs it.
+export interface H1Session {
+  cookie: string;
+  csrf?: string;
+}
+
 // ---------------------------------------------------------------------------
 // HackerOne JSON:API parsers
 // ---------------------------------------------------------------------------
@@ -162,13 +170,14 @@ export interface Enrichment {
 type API = DefineAPI<{
   loadPrograms: (sdk: H1.BackendSDK, creds: H1Credentials) => Promise<void>;
   loadScopes: (sdk: H1.BackendSDK, handle: string, creds: H1Credentials) => Promise<void>;
-  loadEnrichment: (sdk: H1.BackendSDK, handle: string, creds: H1Credentials) => Promise<void>;
+  loadEnrichment: (sdk: H1.BackendSDK, handle: string, session: H1Session) => Promise<void>;
 }>;
 
 type BackendEvents = DefineEvents<{
   program: (data: Program) => void;
   scopes: (data: ScopeBundle) => void;
   enrichment: (data: Enrichment) => void;
+  enrichmentUnavailable: (message: string) => void;
   invalidCreds: () => void;
   error: (message: string) => void;
   stateChanged: (state: "loading" | "loaded") => void;
