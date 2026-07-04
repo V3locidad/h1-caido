@@ -4,7 +4,7 @@ import type { Program, Scope } from "@h1caido/common";
 import Chip from "./Chip.vue";
 import { useCaidoConfig } from "@/composables/useCaidoConfig";
 import { useSDK } from "@/plugins/sdk";
-import { isWebAsset } from "@/utils/scope";
+import { isAddable } from "@/utils/scope";
 import { money } from "@/utils/format";
 
 const props = defineProps<{
@@ -166,7 +166,7 @@ function copy(text: string) {
           <tbody>
             <tr v-for="s in inScope" :key="s.id" class="border-t border-surface-700 align-top">
               <td class="p-2">
-                <div class="font-mono" :class="{ 'opacity-50': !isWebAsset(s) }">{{ s.asset_identifier }}</div>
+                <div class="font-mono" :class="{ 'opacity-50': !isAddable(s) }">{{ s.asset_identifier }}</div>
                 <div v-if="s.instruction" class="opacity-50 text-[11px] whitespace-pre-wrap max-w-[420px] mt-1">
                   {{ s.instruction }}
                 </div>
@@ -184,10 +184,10 @@ function copy(text: string) {
                   <button class="h-7 w-7 rounded border border-surface-600 hover:bg-surface-700" title="Copy"
                     @click="copy(s.asset_identifier)"><i class="fas fa-copy"></i></button>
                   <button class="h-7 w-7 rounded border border-green-700 text-green-400 hover:bg-green-900/30 disabled:opacity-30"
-                    title="Add to Caido scope" :disabled="!isWebAsset(s)"
+                    title="Add to Caido scope" :disabled="!isAddable(s)"
                     @click="caido.addAsset(program.handle, s)"><i class="fas fa-plus"></i></button>
                   <button class="h-7 w-7 rounded border border-rose-700 text-rose-400 hover:bg-rose-900/30 disabled:opacity-30"
-                    title="Remove from Caido scope" :disabled="!isWebAsset(s)"
+                    title="Remove from Caido scope" :disabled="!isAddable(s)"
                     @click="caido.removeAsset(program.handle, s)"><i class="fas fa-trash"></i></button>
                 </div>
               </td>

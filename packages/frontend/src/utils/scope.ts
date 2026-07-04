@@ -1,15 +1,24 @@
 import type { Scope } from "@h1caido/common";
 
-// HackerOne asset types that map to a network host Caido can put in scope.
-const WEB_ASSET_TYPES = new Set(["URL", "WILDCARD", "DOMAIN", "IP_ADDRESS", "CIDR"]);
-
-export function isWebAsset(scope: Scope): boolean {
-  return WEB_ASSET_TYPES.has(scope.asset_type.toUpperCase());
-}
+// HackerOne asset types that are never network hosts (mobile apps, source code,
+// executables, hardware, models). Everything else is judged by its identifier,
+// so URL/API/DOMAIN/OTHER entries that ARE web hosts can be imported.
+const NON_WEB_TYPES = new Set([
+  "GOOGLE_PLAY_APP_ID",
+  "APPLE_STORE_APP_ID",
+  "WINDOWS_APP_STORE_APP_ID",
+  "OTHER_APK",
+  "OTHER_IPA",
+  "TESTFLIGHT",
+  "SOURCE_CODE",
+  "DOWNLOADABLE_EXECUTABLES",
+  "HARDWARE_CIID",
+  "AI_MODEL",
+]);
 
 // Convert a HackerOne asset identifier into a Caido-compatible host pattern.
 // Returns null for identifiers that cannot be represented as a host (e.g. a
-// CIDR range, or a mobile app id).
+// CIDR range).
 export function toCaidoHost(identifier: string): string | null {
   let value = identifier.trim();
   if (!value) return null;
@@ -34,12 +43,25 @@ export function toCaidoHost(identifier: string): string | null {
   }
 }
 
+// The Caido host for a scope, or null if it can't be represented as one.
+// Judged from the identifier (not the asset_type label), minus the non-web
+// asset types, and requiring something that actually looks like a host.
+export function caidoHostFor(scope: Scope): string | null {
+  if (NON_WEB_TYPES.has(scope.asset_type.toUpperCase())) return null;
+  const host = toCaidoHost(scope.asset_identifier);
+  return host && host.includes(".") ? host : null;
+}
+
+// Whether a scope can be added to Caido's scope.
+export function isAddable(scope: Scope): boolean {
+  return caidoHostFor(scope) !== null;
+}
+
 // Build the Caido allowlist (unique hosts) from a program's structured scopes.
 export function scopesToAllowlist(scopes: Scope[]): string[] {
   const hosts = new Set<string>();
   for (const scope of scopes) {
-    if (!isWebAsset(scope)) continue;
-    const host = toCaidoHost(scope.asset_identifier);
+    const host = caidoHostFor(scope);
     if (host) hosts.add(host);
   }
   return Array.from(hosts);

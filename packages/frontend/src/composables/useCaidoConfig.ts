@@ -1,6 +1,6 @@
 import { useSDK } from "@/plugins/sdk";
 import type { Scope } from "@h1caido/common";
-import { scopesToAllowlist, toCaidoHost } from "@/utils/scope";
+import { caidoHostFor, scopesToAllowlist } from "@/utils/scope";
 
 // Prefix used for scope + match-and-replace entries created by this plugin,
 // so users can recognise (and clean up) what H1Caido added.
@@ -52,7 +52,7 @@ export function useCaidoConfig() {
 
   // Add a single asset to the program's Caido scope.
   async function addAsset(handle: string, scope: Scope) {
-    const host = toCaidoHost(scope.asset_identifier);
+    const host = caidoHostFor(scope);
     if (!host) {
       sdk.window.showToast(`"${scope.asset_identifier}" is not a host Caido can scope`, {
         variant: "warning",
@@ -80,7 +80,7 @@ export function useCaidoConfig() {
 
   // Remove a single asset from the program's Caido scope.
   async function removeAsset(handle: string, scope: Scope) {
-    const host = toCaidoHost(scope.asset_identifier);
+    const host = caidoHostFor(scope);
     const existing = findScope(scopeName(handle));
     if (!host || !existing) return;
     try {
