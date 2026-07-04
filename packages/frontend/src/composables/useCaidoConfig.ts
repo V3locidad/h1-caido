@@ -1,0 +1,113 @@
+import { useSDK } from "@/plugins/sdk";
+import type { Scope } from "@h1caido/common";
+import { scopesToAllowlist } from "@/utils/scope";
+
+// Prefix used for scope + match-and-replace entries created by this plugin,
+// so users can recognise (and clean up) what H1Caido added.
+const SCOPE_PREFIX = "h1:";
+const UA_COLLECTION = "h1caido-user_agent";
+
+export function useCaidoConfig() {
+  const sdk = useSDK();
+
+  const scopeName = (handle: string) => `${SCOPE_PREFIX}${handle}`;
+
+  function findScope(name: string) {
+    return sdk.scopes.getScopes().find((s) => s.name === name);
+  }
+
+  // Import all web-testable assets of a program into a dedicated Caido scope.
+  async function importScope(handle: string, scopes: Scope[]) {
+    const allowlist = scopesToAllowlist(scopes);
+    if (allowlist.length === 0) {
+      sdk.window.showToast("No web assets (URL/domain/wildcard) to import for this program", {
+        variant: "warning",
+        duration: 4000,
+      });
+      return;
+    }
+
+    const name = scopeName(handle);
+    const existing = findScope(name);
+
+    try {
+      if (existing) {
+        const merged = Array.from(new Set([...existing.allowlist, ...allowlist]));
+        await sdk.scopes.updateScope(existing.id, { name, allowlist: merged });
+        sdk.window.showToast(`Updated scope "${name}" (${merged.length} hosts)`, {
+          variant: "success",
+          duration: 3000,
+        });
+      } else {
+        await sdk.scopes.createScope({ name, allowlist, denylist: [] });
+        sdk.window.showToast(`Created scope "${name}" (${allowlist.length} hosts)`, {
+          variant: "success",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      sdk.window.showToast(`Failed to import scope: ${error}`, { variant: "error", duration: 5000 });
+    }
+  }
+
+  async function deleteScope(handle: string) {
+    const scope = findScope(scopeName(handle));
+    if (!scope) {
+      sdk.window.showToast("No H1Caido scope to delete for this program", {
+        variant: "info",
+        duration: 3000,
+      });
+      return;
+    }
+    try {
+      await sdk.scopes.deleteScope(scope.id);
+      sdk.window.showToast(`Deleted scope "${scope.name}"`, { variant: "warning", duration: 3000 });
+    } catch (error) {
+      sdk.window.showToast(`Failed to delete scope: ${error}`, { variant: "error", duration: 5000 });
+    }
+  }
+
+  // Optional: tag outgoing traffic with an identifying User-Agent suffix, which
+  // many HackerOne programs ask researchers to do. HackerOne's API does not
+  // expose a per-program UA, so we build one from the handle.
+  async function setUserAgent(handle: string) {
+    const suffix = `bugbounty-h1-${handle}`;
+    let collection = sdk.matchReplace.getCollections().find((c) => c.name === UA_COLLECTION);
+    if (!collection) {
+      collection = await sdk.matchReplace.createCollection({ name: UA_COLLECTION });
+    }
+
+    const existing = sdk.matchReplace
+      .getRules()
+      .find((r) => r.collectionId === collection!.id && r.name === handle);
+    if (existing) {
+      sdk.window.showToast(`User-Agent rule already exists for ${handle}`, {
+        variant: "info",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      await sdk.matchReplace.createRule({
+        name: handle,
+        collectionId: collection.id,
+        sources: [],
+        query: "",
+        section: {
+          kind: "SectionRequestHeader",
+          operation: {
+            kind: "OperationHeaderRaw",
+            matcher: { kind: "MatcherRawRegex", regex: "^User-Agent:(.*?)$" },
+            replacer: { kind: "ReplacerTerm", term: `User-Agent: $1 ${suffix}` },
+          },
+        },
+      });
+      sdk.window.showToast(`Added User-Agent rule "${suffix}"`, { variant: "success", duration: 3000 });
+    } catch (error) {
+      sdk.window.showToast(`Failed to add User-Agent rule: ${error}`, { variant: "error", duration: 5000 });
+    }
+  }
+
+  return { importScope, deleteScope, setUserAgent };
+}

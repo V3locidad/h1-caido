@@ -1,0 +1,20 @@
+{
+  "name": "@h1caido/addon",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "build": "caido-dev build",
+    "watch": "caido-dev watch"
+  },
+  "devDependencies": {
+    "@caido-community/dev": "0.1.0",
+    "@caido/tailwindcss": "0.0.1",
+    "@tailwindcss/typography": "0.5.13",
+    "@vitejs/plugin-vue": "5.2.1",
+    "postcss-prefixwrap": "1.51.0",
+    "tailwindcss": "3.4.13",
+    "tailwindcss-primeui": "0.3.4",
+    "typescript": "5.5.4"
+  }
+}

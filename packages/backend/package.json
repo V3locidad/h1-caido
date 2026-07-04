@@ -1,0 +1,14 @@
+{
+  "name": "@h1caido/backend",
+  "version": "1.0.0",
+  "type": "module",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@caido/sdk-backend": "^0.55.3",
+    "@h1caido/common": "workspace:*",
+    "zod": "^3.24.2"
+  }
+}
