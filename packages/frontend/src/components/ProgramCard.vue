@@ -50,7 +50,7 @@ const rewardRange = computed(() => {
           <dd>{{ program.resolved_reports ?? "—" }}</dd>
         </div>
         <div class="flex justify-between">
-          <dt class="opacity-70">Hackers</dt>
+          <dt class="opacity-70">Hunters</dt>
           <dd>{{ program.participants ?? "—" }}</dd>
         </div>
         <div class="flex justify-between">
